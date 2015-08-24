@@ -1,60 +1,76 @@
 #include <errno.h>
 #include <stdio.h>
-#include <winsock2.h>
-#include <windows.h>
 #include <sys/types.h>
 
-#ifdef WIN32
+#ifdef _WIN32
+  #include <winsock2.h>
   #define close closesocket
 #endif
 
-static char *get_error_string(int error, char *buffer, size_t size) {
-  #ifdef WIN32
-    static char static_buffer[1024];
+#ifdef _WIN32
+  typedef SOCKET socket_t;
+#else
+  typedef int socket_t;
+#endif
 
-    char *real_buffer = static_buffer;
-    size_t real_size = sizeof(static_buffer);
+#ifdef _WIN32
 
-    if (buffer != NULL) {
-      real_buffer = buffer;
-      real_size = size;
-    }
+static char *get_error_string(int error, char *buf, size_t size)
+{
+  static char static_buf[1024];
+  char *real_buf;
+  size_t real_size;
 
-    FormatMessageA(
-      FORMAT_MESSAGE_FROM_SYSTEM,
-      NULL,
-      error,
-      0,
-      real_buffer,
-      real_size,
-      NULL);
-    return real_buffer;
-  #else
-    if (buffer != NULL) {
-      strerror_r(error, char *buffer, size_t size);
-      return buffer;
-    }
-    else {
-      return strerror(error);
-    }
-  #endif
+  if (buf != NULL) {
+    real_buf = buf;
+    real_size = size;
+  } else {
+    real_buf = static_buf;
+    real_size = sizeof(static_buf);
+  }
+
+  FormatMessageA(
+    FORMAT_MESSAGE_FROM_SYSTEM,
+    NULL,
+    error,
+    0,
+    real_buf,
+    (DWORD)real_size,
+    NULL);
+
+  return real_buf;
 }
 
-static int get_socket_error(void) {
-  #ifdef WIN32
-    return WSAGetLastError();
-  #else
-    return errno;
-  #endif
+static int get_socket_error(void)
+{
+  return WSAGetLastError();
 }
 
-int main(int argc, char **argv) {
-  char *host;
-  int port;
+#else /* _WIN32 */
+
+static char *get_error_string(int error, char *buf, size_t size)
+{
+  if (buf != NULL) {
+    strerror_r(error, buf, size);
+    return buf;
+  } else {
+    return strerror(error);
+  }
+}
+
+static int get_socket_error(void)
+{
+  return errno;
+}
+
+#endif /* !_WIN32 */
+
+int main(int argc, char **argv)
+{
   int error;
-  int server_sock;
+  socket_t server_sock;
   struct sockaddr_in server_addr;
-  #ifdef WIN32
+  #ifdef _WIN32
     int wsa_error;
     WSADATA wsa_data;
   #endif
@@ -64,13 +80,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  host = argv[1];
-  port = atoi(argv[2]);
-
-  #ifdef WIN32
+  #ifdef _WIN32
     wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
     if (wsa_error != 0) {
-      fprintf(stderr, "WSAStartup: %s\n", get_error_string(wsa_error, NULL, 0));
+      fprintf(stderr, "WSAStartup: %s\n",
+          get_error_string(wsa_error, NULL, 0));
       return 2;
     }
   #endif
@@ -85,8 +99,8 @@ int main(int argc, char **argv) {
   }
 
   server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr(host);
-  server_addr.sin_port = htons(port);
+  server_addr.sin_addr.s_addr = inet_addr(argv[1]);
+  server_addr.sin_port = htons(atoi(argv[2]));
 
   error = bind(server_sock,
                (struct sockaddr *)&server_addr,
@@ -109,9 +123,9 @@ int main(int argc, char **argv) {
   puts("I'm listening!");
 
   for (;;) {
-    int client_sock;
+    socket_t client_sock;
     struct sockaddr_in client_addr;
-    size_t client_addr_len = sizeof(client_addr);
+    int client_addr_len = sizeof(client_addr);
 
     client_sock = accept(server_sock,
                          (struct sockaddr *)&client_addr,
@@ -128,7 +142,7 @@ int main(int argc, char **argv) {
   
   close(server_sock);
 
-  #ifdef WIN32
+  #ifdef _WIN32
     WSACleanup();
   #endif
 }
