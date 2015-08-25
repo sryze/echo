@@ -101,13 +101,13 @@ int main(int argc, char **argv)
   }
 
   memset(&ai_hints, sizeof(ai_hints), 0);
-  ai_hints.ai_family = AF_UNSPEC;
+  ai_hints.ai_family = AF_INET;
   ai_hints.ai_protocol = IPPROTO_TCP;
   ai_hints.ai_socktype = SOCK_STREAM;
 
   error = getaddrinfo(argv[1], argv[2], &ai_hints, &ai_result);
   if (error != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(get_socket_error()));
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
     close(sock);
     return 4;
   }
@@ -122,6 +122,7 @@ int main(int argc, char **argv)
   if (ai_cur == NULL) {
     fprintf(stderr, "connect: %s\n",
         get_error_string(get_socket_error(), NULL, 0));
+    freeaddrinfo(ai_result);
     close(sock);
     return 5;
   }
