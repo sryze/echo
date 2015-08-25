@@ -75,7 +75,6 @@ int main(int argc, char **argv)
 {
   int error;
   socket_t sock;
-  struct sockaddr_in addr;
   struct addrinfo ai_hints, *ai_result, *ai_cur;
   #ifdef _WIN32
     int wsa_error;
@@ -118,7 +117,9 @@ int main(int argc, char **argv)
   }
 
   for (ai_cur = ai_result; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
-    error = connect(sock, (struct sockaddr *)ai_cur->ai_addr, ai_cur->ai_addrlen);
+    error = connect(sock,
+                    (struct sockaddr *)ai_cur->ai_addr,
+                    (int)ai_cur->ai_addrlen);
     if (error == 0) {
       break;
     }
