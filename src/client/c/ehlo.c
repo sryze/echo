@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     return 3;
   }
 
-  memset(&ai_hints, sizeof(ai_hints), 0);
+  memset(&ai_hints, 0, sizeof(ai_hints));
   ai_hints.ai_family = AF_INET;
   ai_hints.ai_protocol = IPPROTO_TCP;
   ai_hints.ai_socktype = SOCK_STREAM;
