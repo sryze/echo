@@ -1,10 +1,18 @@
 #include <errno.h>
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
   #include <winsock2.h>
   #define close closesocket
+#else
+  #include <netdb.h>
+  #include <unistd.h>
+  #include <arpa/inet.h>
+  #include <netinet/in.h>
+  #include <sys/types.h>
+  #include <sys/socket.h>
 #endif
 
 #ifdef _WIN32

@@ -1,11 +1,16 @@
 #include <errno.h>
 #include <stdio.h>
-#include <sys/types.h>
+#include <string.h>
 
 #ifdef _WIN32
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #define close closesocket
+#else
+  #include <netdb.h>
+  #include <unistd.h>
+  #include <sys/types.h>
+  #include <sys/socket.h>
 #endif
 
 #ifdef _WIN32
@@ -113,7 +118,7 @@ int main(int argc, char **argv)
   }
 
   for (ai_cur = ai_result; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
-    error = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+    error = connect(sock, (struct sockaddr *)ai_cur->ai_addr, ai_cur->ai_addrlen);
     if (error == 0) {
       break;
     }
