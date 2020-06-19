@@ -6,10 +6,6 @@ int main(int argc, char **argv)
   int error;
   socket_t server_sock;
   struct sockaddr_in server_addr;
-  #ifdef _WIN32
-    int wsa_error;
-    WSADATA wsa_data;
-  #endif
   const char *host, *port;
 
   if (argc < 3) {
@@ -17,22 +13,16 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  #ifdef _WIN32
-    wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    if (wsa_error != 0) {
-      fprintf(stderr, "WSAStartup: %s\n",
-          get_error_string(wsa_error, NULL, 0));
-      exit(EXIT_FAILURE);
-    }
-  #endif
-
   host = argv[1];
   port = argv[2];
+
+  socket_init();
+  atexit(socket_shutdown);
 
   server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (server_sock == -1) {
     fprintf(stderr, "socket: %s\n",
-        get_error_string(get_socket_error(), NULL, 0));
+        error_to_str(socket_error(), NULL, 0));
     exit(EXIT_FAILURE);
   }
 
@@ -45,7 +35,7 @@ int main(int argc, char **argv)
                sizeof(server_addr));
   if (error != 0) {
     fprintf(stderr, "bind: %s\n",
-        get_error_string(get_socket_error(), NULL, 0));
+        error_to_str(socket_error(), NULL, 0));
     close_socket(server_sock);
     exit(EXIT_FAILURE);
   }
@@ -53,7 +43,7 @@ int main(int argc, char **argv)
   error = listen(server_sock, 0);
   if (error != 0) {
     fprintf(stderr, "listen: %s\n",
-        get_error_string(get_socket_error(), NULL, 0));
+        error_to_str(socket_error(), NULL, 0));
     close_socket(server_sock);
     exit(EXIT_FAILURE);
   }
@@ -70,7 +60,7 @@ int main(int argc, char **argv)
                          &client_addr_len);
     if (client_sock == -1) {
       fprintf(stderr, "accept: %s\n",
-          get_error_string(get_socket_error(), NULL, 0));
+          error_to_str(socket_error(), NULL, 0));
       break;
     }
 
@@ -79,8 +69,4 @@ int main(int argc, char **argv)
   }
 
   close_socket(server_sock);
-
-  #ifdef _WIN32
-    WSACleanup();
-  #endif
 }

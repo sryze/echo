@@ -2,12 +2,30 @@
 
 #ifdef _WIN32
 
-int get_socket_error(void)
+void socket_init(void)
+{
+  int wsa_error;
+  WSADATA wsa_data;
+
+  wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+  if (wsa_error != 0) {
+    fprintf(stderr, "WSAStartup: %s\n",
+        error_to_str(wsa_error, NULL, 0));
+    exit(EXIT_FAILURE);
+  }
+}
+
+void socket_shutdown(void)
+{
+  WSACleanup();
+}
+
+int socket_error(void)
 {
   return WSAGetLastError();
 }
 
-char *get_error_string(int error, char *buf, size_t size)
+char *error_to_str(int error, char *buf, size_t size)
 {
   static char static_buf[1024];
   char *real_buf;
@@ -35,12 +53,22 @@ char *get_error_string(int error, char *buf, size_t size)
 
 #else /* _WIN32 */
 
-int get_socket_error(void)
+void socket_init(void)
+{
+  /* nothing to do */
+}
+
+void socket_shutdown(void)
+{
+  /* nothing to do */
+}
+
+int socket_error(void)
 {
   return errno;
 }
 
-char *get_error_string(int error, char *buf, size_t size)
+char *error_to_str(int error, char *buf, size_t size)
 {
   if (buf != NULL) {
     strerror_r(error, buf, size);

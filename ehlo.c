@@ -18,22 +18,16 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  #ifdef _WIN32
-    wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    if (wsa_error != 0) {
-      fprintf(stderr, "WSAStartup: %s\n",
-          get_error_string(wsa_error, NULL, 0));
-      exit(EXIT_FAILURE);
-    }
-  #endif
-
   host = argv[1];
   port = argv[2];
+
+  socket_init();
+  atexit(socket_shutdown);
 
   sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sock == -1) {
     fprintf(stderr, "socket: %s\n",
-        get_error_string(get_socket_error(), NULL, 0));
+        error_to_str(socket_error(), NULL, 0));
     exit(EXIT_FAILURE);
   }
 
@@ -64,7 +58,7 @@ int main(int argc, char **argv)
 
   if (ai_cur == NULL) {
     fprintf(stderr, "connect: %s\n",
-        get_error_string(get_socket_error(), NULL, 0));
+        error_to_str(socket_error(), NULL, 0));
     freeaddrinfo(ai_result);
     close_socket(sock);
     exit(EXIT_FAILURE);
@@ -74,8 +68,4 @@ int main(int argc, char **argv)
 
   close_socket(sock);
   free(addr_str);
-
-  #ifdef _WIN32
-    WSACleanup();
-  #endif
 }

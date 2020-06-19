@@ -24,5 +24,9 @@
   typedef int socket_t;
 #endif
 
-int get_socket_error(void);
-char *get_error_string(int error, char *buf, size_t size);
+void socket_init(void);
+void socket_shutdown(void);
+
+int socket_error(void);
+
+char *error_to_str(int error, char *buf, size_t size);
