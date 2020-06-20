@@ -90,17 +90,16 @@ static void *client_thread(void *arg)
     if (recv_size <= 0) {
       if (recv_size == 0) {
         printf_locked("Client %d disconnected\n", client->id);
-        close_socket(client->sock);
+        close_socket_nicely(client->sock);
         client->sock = INVALID_SOCKET;
         client->thread = INVALID_THREAD;
         send_disconnect_message(client->id);
-        return NULL;
       } else {
         printf_locked("Failed to read command from client %d: %s\n",
                       client->id,
                       error_to_str(socket_error(), NULL, 0));
-        continue;
       }
+      break;
     }
 
     switch (cmd) {
@@ -157,7 +156,7 @@ int main(int argc, char **argv)
   port = argv[2];
 
   socket_init();
-  atexit(socket_shutdown);
+  atexit(socket_cleanup);
 
   server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (server_sock == -1) {
@@ -235,7 +234,7 @@ int main(int argc, char **argv)
       fprintf_locked(stderr,
           "Aborting connection from %s because reached maximum number of clients\n",
           inet_ntoa(client_addr.sin_addr));
-      close_socket(client_sock);
+      close_socket_nicely(client_sock);
       continue;
     }
 
@@ -247,7 +246,7 @@ int main(int argc, char **argv)
       fprintf_locked(stderr,
                      "Failed to create client thread: %s\n",
                      error_to_str(error, NULL, 0));
-      close_socket(clients[i].sock);
+      close_socket_nicely(clients[i].sock);
       clients[i].sock = INVALID_SOCKET;
       clients[i].thread = INVALID_THREAD;
     }
@@ -259,9 +258,9 @@ int main(int argc, char **argv)
 
   for (i = 0; i < EHLO_MAX_CLIENTS; i++) {
     if (clients[i].sock != INVALID_SOCKET) {
-      close_socket(clients[i].sock);
+      close_socket_nicely(clients[i].sock);
     }
   }
 
-  close_socket(server_sock);
+  close_socket_nicely(server_sock);
 }

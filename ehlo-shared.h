@@ -71,7 +71,8 @@ enum {
 const char *get_program_name(const char *path);
 
 void socket_init(void);
-void socket_shutdown(void);
+void socket_cleanup(void);
+int close_socket_nicely(socket_t sock);
 
 int socket_error(void);
 char *error_to_str(int error, char *buf, size_t size);

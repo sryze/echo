@@ -96,7 +96,7 @@ int main(int argc, char **argv)
   port = argv[2];
 
   socket_init();
-  atexit(socket_shutdown);
+  atexit(socket_cleanup);
 
   sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sock == INVALID_SOCKET) {
@@ -174,13 +174,13 @@ int main(int argc, char **argv)
   }
 
   cancel_thread(command_thread_handle);
-  close_socket(sock);
+  close_socket_nicely(sock);
   free(addr_str);
   exit(EXIT_SUCCESS);
 
 fatal_error:
   freeaddrinfo(ai_result);
   free(addr_str);
-  close_socket(sock);
+  close_socket_nicely(sock);
   exit(EXIT_FAILURE);
 }

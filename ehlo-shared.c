@@ -40,7 +40,7 @@ void socket_init(void)
   }
 }
 
-void socket_shutdown(void)
+void socket_cleanup(void)
 {
   WSACleanup();
 }
@@ -187,7 +187,7 @@ void socket_init(void)
   /* nothing to do */
 }
 
-void socket_shutdown(void)
+void socket_cleanup(void)
 {
   /* nothing to do */
 }
@@ -238,6 +238,17 @@ int destroy_mutex(mutex_t *mutex)
 }
 
 #endif /* !_WIN32 */
+
+int close_socket_nicely(socket_t sock)
+{
+  int error;
+
+  error = shutdown(sock, SHUT_RDWR);
+  if (error == 0) {
+    return close_socket(sock);
+  }
+  return error;
+}
 
 int vfprintf_locked(FILE *file, const char *format, va_list args)
 {
