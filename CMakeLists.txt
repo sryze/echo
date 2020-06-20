@@ -1,6 +1,8 @@
 project(ehlo C)
 cmake_minimum_required(VERSION 3.0)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 if(WIN32)
   add_definitions(-DWIN32_LEAN_AND_MEAN -D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
