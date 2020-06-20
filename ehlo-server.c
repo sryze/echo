@@ -26,7 +26,6 @@ static int send_message(socket_t sock, int sender_id, const char *message)
   if (result <= 0) {
     return socket_error();
   }
-
   return 0;
 }
 

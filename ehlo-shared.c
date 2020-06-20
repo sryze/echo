@@ -53,27 +53,33 @@ int socket_error(void)
 char *error_to_str(int error, char *buf, size_t size)
 {
   static char static_buf[1024];
-  char *real_buf;
-  size_t real_size;
+  DWORD count;
 
-  if (buf != NULL) {
-    real_buf = buf;
-    real_size = size;
-  } else {
-    real_buf = static_buf;
-    real_size = sizeof(static_buf);
+  if (buf == NULL) {
+    buf = static_buf;
+    size = sizeof(static_buf);
   }
 
-  FormatMessageA(
+  count = FormatMessageA(
     FORMAT_MESSAGE_FROM_SYSTEM,
     NULL,
     error,
     0,
-    real_buf,
-    (DWORD)real_size,
+    buf,
+    size,
     NULL);
+  if (count == 0) {
+    return "Unknown error";
+  }
 
-  return real_buf;
+  /* Remove trailing \r\n */
+  while (buf[count - 1] == '\r'
+      || buf[count - 1] == '\n'
+      || buf[count - 1] == '.') {
+    buf[--count] = '\0';
+  }
+
+  return buf;
 }
 
 static DWORD WINAPI thread_proc(LPVOID param)
