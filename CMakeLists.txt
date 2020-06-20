@@ -1,11 +1,14 @@
 project(ehlo C)
 cmake_minimum_required(VERSION 3.0)
 
+if(WIN32)
+  add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
 if(UNIX)
   add_definitions(-D_GNU_SOURCE)
 endif()
 
-add_library(ehlo-shared STATIC ehlo-shared.c)
+add_library(ehlo-shared STATIC ehlo-shared.h ehlo-shared.c)
 if(WIN32)
   target_link_libraries(ehlo-shared ws2_32)
 endif()

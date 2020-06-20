@@ -5,7 +5,28 @@
 static int stdio_lock_created;
 static mutex_t stdio_lock;
 
+const char *get_program_name(const char *path)
+{
+  size_t len = strlen(path);
+  const char *p;
+
+  if (len == 0) {
+    return NULL;
+  }
+  for (p = path + len - 1; p > path; p--) {
+    if (*p == '/' || *p == '\\') {
+      return p + 1;
+    }
+  }
+  return path;
+}
+
 #ifdef _WIN32
+
+struct thread_info {
+  void *(*start)(void *arg);
+  void *arg;
+};
 
 void socket_init(void)
 {
@@ -14,8 +35,7 @@ void socket_init(void)
 
   wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
   if (wsa_error != 0) {
-    fprintf(stderr, "WSAStartup: %s\n",
-        error_to_str(wsa_error, NULL, 0));
+    fprintf(stderr, "WSAStartup: %s\n", error_to_str(wsa_error, NULL, 0));
     exit(EXIT_FAILURE);
   }
 }
@@ -56,23 +76,40 @@ char *error_to_str(int error, char *buf, size_t size)
   return real_buf;
 }
 
+static DWORD WINAPI thread_proc(LPVOID param)
+{
+  struct thread_info thread_info = *(struct thread_info *)param;
+
+  free(param);
+  thread_info.start(thread_info.arg);
+  return 0;
+}
+
 int create_thread(thread_t *thread, void *(*start)(void *arg), void *arg)
 {
-  *thread = CreateThread(NULL,
-                         0,
-                         start,
-                         arg,
-                         0,
-                         NULL);
+  struct thread_info *thread_info;
+  HANDLE thread_handle;
+
+  thread_info = malloc(sizeof(*thread_info));
+  if (thread_info == NULL) {
+    return errno;
+  }
+
+  thread_info->start = start;
+  thread_info->arg = arg;
+
+  thread_handle = CreateThread(NULL, 0, thread_proc, thread_info, 0, NULL);
+  if (thread_handle != NULL) {
+    *thread = thread_handle;
+    return 0;
+  }
+
   return GetLastError();
 }
 
 int cancel_thread(thread_t thread)
 {
-  if (!TerminateThread(handle, 0)) {
-    return GetLastError();
-  }
-  return 0;
+  return TerminateThread(thread, 0) ? 0 : GetLastError();
 }
 
 int create_mutex(mutex_t *mutex)
@@ -115,7 +152,7 @@ int vasprintf(char **strp, const char *format, va_list args)
       return -1;
   }
 
-  result = _vsprintf_s(str, len + 1, format, args);
+  result = vsprintf_s(str, len + 1, format, args);
   if (result == -1) {
       free(str);
       return -1;
@@ -130,8 +167,8 @@ int asprintf(char **strp, const char *format, ...)
   va_list args;
   int result;
 
-  va_start(args, fmt);
-  result = vasprintf(strp, fmt, args);
+  va_start(args, format);
+  result = vasprintf(strp, format, args);
   va_end(args);
 
   return result;

@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include "ehlo-shared.h"
 
+static void print_prompt(void)
+{
+  printf_locked("> ");
+  fflush(stdout);
+}
+
 static void *command_thread(void *arg)
 {
   socket_t sock = *((socket_t *)arg);
@@ -60,6 +66,7 @@ static void *command_thread(void *arg)
         } else {
           printf_locked("\r[%d]: %s\n", client_id, message);
         }
+        print_prompt();
         break;
       }
       default:
@@ -76,16 +83,12 @@ int main(int argc, char **argv)
   int error;
   socket_t sock;
   struct addrinfo ai_hints, *ai_result = NULL, *ai_cur;
-  #ifdef _WIN32
-    int wsa_error;
-    WSADATA wsa_data;
-  #endif
   const char *host, *port;
   char *addr_str = NULL;
   thread_t command_thread_handle;
 
   if (argc < 3) {
-    fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <host> <port>\n", get_program_name(argv[0]));
     exit(EXIT_FAILURE);
   }
 
@@ -145,29 +148,29 @@ int main(int argc, char **argv)
   }
 
   for (;;) {
-    char *line;
-    size_t line_len;
-    int size;
+    char line[EHLO_MAX_MESSAGE_LEN];
     int8_t cmd;
 
-    printf_locked("> ");
+    print_prompt();
 
-    line_len = 0;
-    size = getline(&line, &line_len, stdin);
-    if (size == -1) {
-      free(line);
+    if (fgets(line, sizeof(line), stdin) == NULL) {
+      if (feof(stdin)) {
+        printf("EOF\n");
+      } else {
+        fprintf(stderr, 
+                "Error reading input: %s\n", 
+                error_to_str(errno, NULL, 0));
+      }
       break;
     }
 
     /* Remove trailing newline */
-    line[size - 1] = '\0';
+    line[strlen(line) - 1] = '\0';
 
     /* Send this message to the server */
     cmd = EHLO_CMD_MESSAGE;
     send_n(sock, (char *)&cmd, 1, 0);
-    send_n(sock, line, strlen(line) + 1, 0);
-
-    free(line);
+    send_n(sock, line, (int)strlen(line) + 1, 0);
   }
 
   cancel_thread(command_thread_handle);

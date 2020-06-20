@@ -22,7 +22,7 @@ static int send_message(socket_t sock, int sender_id, const char *message)
   if (result <= 0) {
     return socket_error();
   }
-  result = send_n(sock, message, strlen(message) + 1, 0);
+  result = send_n(sock, message, (int)(strlen(message) + 1), 0);
   if (result <= 0) {
     return socket_error();
   }
@@ -52,6 +52,7 @@ static void send_broadcast_message(int sender_id, const char *message)
       if (error != 0) {
         fprintf_locked(stderr,
             "Error sending message to client %d: %s\n",
+            i,
             error_to_str(error, NULL, 0));
       }
     }
@@ -80,7 +81,7 @@ static void *client_thread(void *arg)
 {
   struct client *client = arg;
 
-  send_server_message(client->sock, "Welcome to the chat!\n");
+  send_server_message(client->sock, "Welcome to the chat!");
 
   for (;;) {
     int recv_size;
@@ -147,10 +148,9 @@ int main(int argc, char **argv)
   struct sockaddr_in server_addr;
   const char *host, *port;
   int i;
-  char *message;
 
   if (argc < 3) {
-    fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <host> <port>\n", get_program_name(argv[0]));
     exit(EXIT_FAILURE);
   }
 
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
   printf("Server is shutting down\n");
 
   for (i = 0; i < EHLO_MAX_CLIENTS; i++) {
-    if (clients[i].sock == INVALID_SOCKET) {
+    if (clients[i].sock != INVALID_SOCKET) {
       close_socket(clients[i].sock);
     }
   }

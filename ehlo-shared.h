@@ -68,6 +68,8 @@ enum {
 
 #define EHLO_SERVER_ID -1
 
+const char *get_program_name(const char *path);
+
 void socket_init(void);
 void socket_shutdown(void);
 
