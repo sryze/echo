@@ -2,7 +2,7 @@ project(ehlo C)
 cmake_minimum_required(VERSION 3.0)
 
 if(WIN32)
-  add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  add_definitions(-DWIN32_LEAN_AND_MEAN -D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 if(UNIX)
   add_definitions(-D_GNU_SOURCE)
