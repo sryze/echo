@@ -78,6 +78,22 @@ static void *command_thread(void *arg)
   return NULL;
 }
 
+static void execute_chat_command(socket_t sock, const char *cmd)
+{
+  if (strncmp(cmd, "/help", sizeof("/help") - 1) == 0) {
+    printf_locked("Available commands:\n"
+      "  /help - show this help message\n"
+      "  /exit - exit the program\n"
+    );
+  } else if (strncmp(cmd, "/exit", sizeof("/exit") - 1) == 0) {
+    close_socket_nicely(sock);
+    exit(EXIT_SUCCESS);
+  } else {
+    printf_locked("Unknown command, "
+                  "type /help to see the list of all commands\n");
+  }
+}
+
 int main(int argc, char **argv)
 {
   int error;
@@ -166,6 +182,11 @@ int main(int argc, char **argv)
 
     /* Remove trailing newline */
     line[strlen(line) - 1] = '\0';
+
+    if (line[0] == '/') {
+      execute_chat_command(sock, line);
+      continue;
+    }
 
     /* Send this message to the server */
     cmd = EHLO_CMD_MESSAGE;
