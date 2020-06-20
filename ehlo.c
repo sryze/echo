@@ -1,17 +1,88 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "ehlo-shared.h"
+
+static void *command_thread(void *arg)
+{
+  socket_t sock = *((socket_t *)arg);
+
+  for (;;) {
+    int recv_size;
+    int8_t cmd;
+
+    recv_size = recv(sock, &cmd, 1, 0);
+    if (recv_size <= 0) {
+      if (recv_size == 0) {
+        printf_locked("Connection closed\n");
+        exit(EXIT_SUCCESS);
+      } else {
+        printf_locked("Failed to read command: %s\n",
+                      error_to_str(socket_error(), NULL, 0));
+        continue;
+      }
+    }
+
+    switch (cmd) {
+      case EHLO_CMD_PING:
+        /* not implemented yet */
+        break;
+      case EHLO_CMD_MESSAGE: {
+        int16_t client_id;
+        char message[EHLO_MAX_MESSAGE_LEN];
+        size_t offset = 0;
+        recv_size =
+            recv_n(sock, (char *)&client_id, sizeof(client_id), 0, NULL);
+        if (recv_size <= 0) {
+          fprintf_locked(stderr,
+                         "Failed to receive message: %s\n",
+                         error_to_str(socket_error(), NULL, 0));
+          break;
+        }
+        client_id = ntohs(client_id);
+        /*
+         * Read the message one chracter at a time until we hit the trailing
+         * NUL ('\0') character. This is probably inefficient...
+         */
+        for (;
+             (recv_size = recv(sock, message + offset, 1, 0)) >= 0;
+             offset++) {
+          if (recv_size == 0 || message[offset] == '\0') {
+            /* End of message */
+            break;
+          }
+          if (offset >= sizeof(message)) {
+            /* Message is too long, skip remaining text */
+            continue;
+          }
+        }
+        if (client_id == EHLO_SERVER_ID) {
+          printf_locked("\r[server]: %s\n", message);
+        } else {
+          printf_locked("\r[%d]: %s\n", client_id, message);
+        }
+        break;
+      }
+      default:
+        fprintf_locked(stderr, "Received unknown command %d\n", cmd);
+        break;
+    }
+  }
+
+  return NULL;
+}
 
 int main(int argc, char **argv)
 {
   int error;
   socket_t sock;
-  struct addrinfo ai_hints, *ai_result, *ai_cur;
+  struct addrinfo ai_hints, *ai_result = NULL, *ai_cur;
   #ifdef _WIN32
     int wsa_error;
     WSADATA wsa_data;
   #endif
   const char *host, *port;
-  char *addr_str;
+  char *addr_str = NULL;
+  thread_t command_thread_handle;
 
   if (argc < 3) {
     fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
@@ -25,10 +96,10 @@ int main(int argc, char **argv)
   atexit(socket_shutdown);
 
   sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (sock == -1) {
+  if (sock == INVALID_SOCKET) {
     fprintf(stderr, "socket: %s\n",
         error_to_str(socket_error(), NULL, 0));
-    exit(EXIT_FAILURE);
+    goto fatal_error;
   }
 
   memset(&ai_hints, 0, sizeof(ai_hints));
@@ -38,9 +109,9 @@ int main(int argc, char **argv)
 
   error = getaddrinfo(host, port, &ai_hints, &ai_result);
   if (error != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
-    close_socket(sock);
-    exit(EXIT_FAILURE);
+    fprintf(stderr,
+        "Failed to resolve address: %s\n", gai_strerror(error));
+    goto fatal_error;
   }
 
   printf("Connecting to %s:%s\n", host, port);
@@ -57,15 +128,56 @@ int main(int argc, char **argv)
   }
 
   if (ai_cur == NULL) {
-    fprintf(stderr, "connect: %s\n",
-        error_to_str(socket_error(), NULL, 0));
-    freeaddrinfo(ai_result);
-    close_socket(sock);
-    exit(EXIT_FAILURE);
+    fprintf(stderr,
+        "Could not connect: %s\n", error_to_str(socket_error(), NULL, 0));
+    goto fatal_error;
   }
 
-  puts("I connected!");
+  freeaddrinfo(ai_result);
+  ai_result = NULL;
 
+  error = create_thread(&command_thread_handle, command_thread, &sock);
+  if (error != 0) {
+    fprintf(stderr,
+            "Failed to create command thread: %s\n",
+            error_to_str(error, NULL, 0));
+    goto fatal_error;
+  }
+
+  for (;;) {
+    char *line;
+    size_t line_len;
+    int size;
+    int8_t cmd;
+
+    printf_locked("> ");
+
+    line_len = 0;
+    size = getline(&line, &line_len, stdin);
+    if (size == -1) {
+      free(line);
+      break;
+    }
+
+    /* Remove trailing newline */
+    line[size - 1] = '\0';
+
+    /* Send this message to the server */
+    cmd = EHLO_CMD_MESSAGE;
+    send_n(sock, (char *)&cmd, 1, 0);
+    send_n(sock, line, strlen(line) + 1, 0);
+
+    free(line);
+  }
+
+  cancel_thread(command_thread_handle);
   close_socket(sock);
   free(addr_str);
+  exit(EXIT_SUCCESS);
+
+fatal_error:
+  freeaddrinfo(ai_result);
+  free(addr_str);
+  close_socket(sock);
+  exit(EXIT_FAILURE);
 }
