@@ -100,7 +100,7 @@ static void *client_thread(void *arg)
         printf_locked("Failed to read command from client %d: %s\n",
                       client->id,
                       error_to_str(socket_error(), NULL, 0));
-                      continue;
+        continue;
       }
     }
 
@@ -194,7 +194,7 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  error = listen(server_sock, 0);
+  error = listen(server_sock, 128);
   if (error != 0) {
     fprintf(stderr, "Listen error: %s\n",
         error_to_str(socket_error(), NULL, 0));
