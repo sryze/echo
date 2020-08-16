@@ -53,32 +53,22 @@ int socket_error(void)
 char *error_to_str(int error, char *buf, size_t size)
 {
   static char static_buf[1024];
-  DWORD count;
 
   if (buf == NULL) {
     buf = static_buf;
     size = sizeof(static_buf);
   }
 
-  count = FormatMessageA(
-    FORMAT_MESSAGE_FROM_SYSTEM,
+  (void)FormatMessageA(
+    FORMAT_MESSAGE_FROM_SYSTEM
+        | FORMAT_MESSAGE_IGNORE_INSERTS
+        | FORMAT_MESSAGE_MAX_WIDTH_MASK,
     NULL,
     error,
-    0,
-    buf,
-    size,
+    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+    (LPSTR)static_buf,
+    (DWORD)size,
     NULL);
-  if (count == 0) {
-    return "Unknown error";
-  }
-
-  /* Remove trailing \r\n */
-  while (buf[count - 1] == '\r'
-      || buf[count - 1] == '\n'
-      || buf[count - 1] == '.') {
-    buf[--count] = '\0';
-  }
-
   return buf;
 }
 
