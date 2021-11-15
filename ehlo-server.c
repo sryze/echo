@@ -110,7 +110,7 @@ static void *client_thread(void *arg)
         char message[EHLO_MAX_MESSAGE_LEN];
         size_t offset = 0;
         /*
-         * Read the message one chracter at a time until we hit the trailing
+         * Read the message one character at a time until we hit the trailing
          * NUL ('\0') character. This is probably inefficient...
          */
         for (;
