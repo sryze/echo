@@ -1,5 +1,6 @@
-project(ehlo C)
 cmake_minimum_required(VERSION 3.0)
+
+project(ehlo C)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
